@@ -43,6 +43,8 @@ export default function HomePage() {
   });
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [statusTone, setStatusTone] = useState("neutral");
+  const [downloadUrl, setDownloadUrl] = useState("");
   const [fontMetrics, setFontMetrics] = useState({
     nama: null,
     sebagai: null,
@@ -50,6 +52,7 @@ export default function HomePage() {
   const [excelCount, setExcelCount] = useState(null);
   const [excelInfoError, setExcelInfoError] = useState("");
   const pollRef = useRef(null);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -58,7 +61,12 @@ export default function HomePage() {
     }
   };
 
-  useEffect(() => () => stopPolling(), []);
+  useEffect(() => {
+    return () => {
+      stopPolling();
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    };
+  }, [downloadUrl]);
 
   useEffect(() => {
     if (!templateFile) {
@@ -149,10 +157,12 @@ export default function HomePage() {
     stopPolling();
     if (!canGenerate) {
       setStatus("Lengkapi semua file upload terlebih dahulu.");
+      setStatusTone("error");
       return;
     }
     setLoading(true);
     setStatus("Mengupload file...");
+    setStatusTone("processing");
     try {
       const formData = new FormData();
       formData.append("template", templateFile);
@@ -170,6 +180,7 @@ export default function HomePage() {
 
       const uploadData = await uploadRes.json();
       setStatus("Menyiapkan proses generate...");
+      setStatusTone("processing");
 
       const generateRes = await fetch("/api/generate", {
         method: "POST",
@@ -207,6 +218,7 @@ export default function HomePage() {
           }
           if (data.status === "processing") {
             setStatus(`Sedang generate ${data.current} dari ${data.total} data...`);
+            setStatusTone("processing");
             pollRef.current = setTimeout(pollStatus, 700);
             return;
           }
@@ -214,6 +226,7 @@ export default function HomePage() {
             throw new Error(data?.error || "Generate gagal.");
           }
           setStatus(`Menyiapkan ZIP untuk ${total} data...`);
+          setStatusTone("processing");
           const zipRes = await fetch(
             `/api/generate/download?jobId=${jobId}`
           );
@@ -222,18 +235,21 @@ export default function HomePage() {
             throw new Error(errorData?.error || "Download ZIP gagal.");
           }
           const blob = await zipRes.blob();
-          const downloadUrl = URL.createObjectURL(blob);
+          if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+          const nextUrl = URL.createObjectURL(blob);
+          setDownloadUrl(nextUrl);
           const link = document.createElement("a");
-          link.href = downloadUrl;
+          link.href = nextUrl;
           link.download = "sertifikat.zip";
           document.body.appendChild(link);
           link.click();
           link.remove();
-          URL.revokeObjectURL(downloadUrl);
           setStatus("Selesai. ZIP terunduh.");
+          setStatusTone("done");
           setLoading(false);
         } catch (error) {
           setStatus(error?.message || "Terjadi kesalahan.");
+          setStatusTone("error");
           setLoading(false);
         }
       };
@@ -241,6 +257,7 @@ export default function HomePage() {
       pollStatus();
     } catch (error) {
       setStatus(error?.message || "Terjadi kesalahan.");
+      setStatusTone("error");
       setLoading(false);
     }
   };
@@ -568,20 +585,6 @@ export default function HomePage() {
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={loading || !canGenerate}
-                  className="hidden w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 lg:block"
-                >
-                  {loading ? "Memproses..." : "Generate Sertifikat"}
-                </button>
-
-                {status && (
-                  <p className="hidden rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-300 lg:block">
-                    {status}
-                  </p>
-                )}
               </section>
             </aside>
           </div>
@@ -609,7 +612,7 @@ export default function HomePage() {
                   Upload template untuk mulai preview.
                 </div>
               )}
-              <div className="mt-4 space-y-3 lg:hidden">
+              <div className="mt-4 space-y-3">
                 <button
                   type="button"
                   onClick={handleGenerate}
@@ -619,15 +622,96 @@ export default function HomePage() {
                   {loading ? "Memproses..." : "Generate Sertifikat"}
                 </button>
                 {status && (
-                  <p className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-300">
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-sm ${
+                      statusTone === "processing"
+                        ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
+                        : statusTone === "done"
+                        ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
+                        : statusTone === "error"
+                        ? "border-rose-400/40 bg-rose-500/10 text-rose-200"
+                        : "border-slate-800 bg-slate-950/60 text-slate-300"
+                    }`}
+                  >
                     {status}
-                  </p>
+                  </div>
+                )}
+                {downloadUrl && (
+                  <a
+                    href={downloadUrl}
+                    download="sertifikat.zip"
+                    className="inline-flex w-full items-center justify-center rounded-xl border border-emerald-400/50 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20"
+                  >
+                    Unduh ZIP Lagi
+                  </a>
                 )}
               </div>
             </div>
           </section>
         </div>
+
+        <footer className="mt-12 flex items-center justify-center gap-2 text-sm text-slate-400">
+          <span>Dibuat oleh</span>
+          <button
+            type="button"
+            onClick={() => setShowEasterEgg(true)}
+            className="text-rose-400 transition hover:text-rose-300"
+            aria-label="Easter egg"
+          >
+            ❤
+          </button>
+          <a
+            href="https://haisyam.my.id"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-slate-200 hover:text-emerald-300"
+          >
+            HaisyamDev
+          </a>
+        </footer>
+
+        {showEasterEgg && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-100 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-lg font-semibold">Easter Egg!</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowEasterEgg(false)}
+                  className="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:border-slate-500"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="mt-4 text-sm text-slate-300">
+                yahh ketahuan dehh siapa developernya hmmm nihh akun instagramnya{" "}
+                <a
+                  href="https://www.instagram.com/mhmdkhrzmi/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-emerald-300 hover:text-emerald-200"
+                >
+                  @mhmdkhrzmi
+                </a>
+                , jangan lupa follow yaaa! dia baikk kokkk heheee.
+              </p>
+              <div className="mt-6 flex justify-end">
+                <a
+                  href="https://www.instagram.com/mhmdkhrzmi/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg border border-emerald-400/50 px-4 py-2 text-sm text-emerald-200 hover:border-emerald-300"
+                >
+                  Follow!
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+
+
