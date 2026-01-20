@@ -1,0 +1,26 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1220"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="80" y="70" width="1040" height="490" rx="48" fill="#0f172a" stroke="#1f2937" stroke-width="2"/>
+  <rect x="120" y="120" width="360" height="360" rx="32" fill="#0b1220" stroke="url(#accent)" stroke-width="6"/>
+  <path d="M170 170h260v46H170zM170 250h260v46H170zM170 330h180v46H170z" fill="#e2e8f0"/>
+  <circle cx="390" cy="360" r="36" fill="url(#accent)"/>
+  <text x="520" y="240" fill="#f8fafc" font-family="Verdana, Geneva, sans-serif" font-size="56" font-weight="700">
+    Sertifikat Generator
+  </text>
+  <text x="520" y="300" fill="#cbd5f5" font-family="Verdana, Geneva, sans-serif" font-size="26">
+    Generate sertifikat massal dari template + Excel
+  </text>
+  <text x="520" y="350" fill="#94a3b8" font-family="Verdana, Geneva, sans-serif" font-size="22">
+    Upload template, data, dan font. Unduh ZIP otomatis.
+  </text>
+</svg>
