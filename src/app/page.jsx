@@ -20,8 +20,8 @@ export default function HomePage() {
   const [fontSebagaiUrl, setFontSebagaiUrl] = useState("");
   const [fontNamaPath, setFontNamaPath] = useState("");
   const [fontSebagaiPath, setFontSebagaiPath] = useState("");
-  const [fontNamaTempDir, setFontNamaTempDir] = useState("");
-  const [fontSebagaiTempDir, setFontSebagaiTempDir] = useState("");
+  const [fontNamaKey, setFontNamaKey] = useState("");
+  const [fontSebagaiKey, setFontSebagaiKey] = useState("");
   const [imageSize, setImageSize] = useState(emptySize);
   const [namePos, setNamePos] = useState({
     x: 80,
@@ -77,7 +77,9 @@ export default function HomePage() {
   useEffect(() => {
     return () => {
       stopPolling();
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+      if (downloadUrl && downloadUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(downloadUrl);
+      }
     };
   }, [downloadUrl]);
 
@@ -101,7 +103,7 @@ export default function HomePage() {
     if (!fontNamaFile) {
       setFontNamaUrl("");
       setFontNamaPath("");
-      setFontNamaTempDir("");
+      setFontNamaKey("");
       setFontMetrics((prev) => ({ ...prev, nama: null }));
       setFontLoadState((prev) => ({ ...prev, nama: "idle" }));
       setFontLoadError((prev) => ({ ...prev, nama: "" }));
@@ -117,7 +119,7 @@ export default function HomePage() {
         if (data?.error) throw new Error(data.error);
         setFontNamaUrl(data.fontUrl || "");
         setFontNamaPath(data.fontPath || "");
-        setFontNamaTempDir(data.tempDir || "");
+        setFontNamaKey(data.fontKey || "");
         setFontLoadState((prev) => ({ ...prev, nama: "success" }));
         if (typeof data?.ascentRatio === "number") {
           setFontMetrics((prev) => ({ ...prev, nama: data.ascentRatio }));
@@ -136,7 +138,7 @@ export default function HomePage() {
     if (!enableSebagai || !fontSebagaiFile) {
       setFontSebagaiUrl("");
       setFontSebagaiPath("");
-      setFontSebagaiTempDir("");
+      setFontSebagaiKey("");
       setFontMetrics((prev) => ({ ...prev, sebagai: null }));
       setFontLoadState((prev) => ({ ...prev, sebagai: "idle" }));
       setFontLoadError((prev) => ({ ...prev, sebagai: "" }));
@@ -152,7 +154,7 @@ export default function HomePage() {
         if (data?.error) throw new Error(data.error);
         setFontSebagaiUrl(data.fontUrl || "");
         setFontSebagaiPath(data.fontPath || "");
-        setFontSebagaiTempDir(data.tempDir || "");
+        setFontSebagaiKey(data.fontKey || "");
         setFontLoadState((prev) => ({ ...prev, sebagai: "success" }));
         if (typeof data?.ascentRatio === "number") {
           setFontMetrics((prev) => ({ ...prev, sebagai: data.ascentRatio }));
@@ -175,7 +177,7 @@ export default function HomePage() {
     if (!excelFile) missing.push("File Excel peserta belum dipilih.");
     if (!fontNamaFile) {
       missing.push("Font Nama belum dipilih.");
-    } else if (!fontNamaPath || fontLoadState.nama === "loading") {
+    } else if (!fontNamaKey || fontLoadState.nama === "loading") {
       missing.push("Font Nama belum siap digunakan.");
     } else if (fontLoadState.nama === "error") {
       missing.push("Font Nama gagal dibaca.");
@@ -184,7 +186,7 @@ export default function HomePage() {
     if (enableSebagai) {
       if (!fontSebagaiFile) {
         missing.push('Font untuk teks "Sebagai" belum dipilih.');
-      } else if (!fontSebagaiPath || fontLoadState.sebagai === "loading") {
+      } else if (!fontSebagaiKey || fontLoadState.sebagai === "loading") {
         missing.push('Font untuk teks "Sebagai" belum siap.');
       } else if (fontLoadState.sebagai === "error") {
         missing.push('Font untuk teks "Sebagai" gagal dibaca.');
@@ -195,9 +197,9 @@ export default function HomePage() {
     templateFile,
     excelFile,
     fontNamaFile,
-    fontNamaPath,
+    fontNamaKey,
     fontSebagaiFile,
-    fontSebagaiPath,
+    fontSebagaiKey,
     enableSebagai,
     imageSize.width,
     fontLoadState.nama,
@@ -216,7 +218,7 @@ export default function HomePage() {
       return;
     }
     setLoading(true);
-    setStatus("Mengupload file...");
+    setStatus("Mengupload file ke cloud...");
     setStatusTone("processing");
     try {
       const formData = new FormData();
@@ -241,12 +243,10 @@ export default function HomePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          templatePath: uploadData.files.template,
-          excelPath: uploadData.files.excel,
-          fontNamaPath,
-          fontSebagaiPath: enableSebagai ? fontSebagaiPath : null,
-          fontNamaTempDir,
-          fontSebagaiTempDir,
+          excelKey: uploadData.files.excel,
+          templateKey: uploadData.files.template,
+          fontNamaKey,
+          fontSebagaiKey: enableSebagai ? fontSebagaiKey : null,
           positions: {
             nama: { ...namePos, alignCenter: alignCenter.nama },
             sebagai: enableSebagai
@@ -282,20 +282,24 @@ export default function HomePage() {
           }
           setStatus(`Menyiapkan ZIP untuk ${total} data...`);
           setStatusTone("processing");
-          const zipRes = await fetch(
-            `/api/generate/download?jobId=${jobId}`
-          );
+          const zipRes = await fetch(`/api/generate/download?jobId=${jobId}`);
           if (!zipRes.ok) {
             const errorData = await zipRes.json().catch(() => null);
             throw new Error(errorData?.error || "Download ZIP gagal.");
           }
-          const blob = await zipRes.blob();
-          if (downloadUrl) URL.revokeObjectURL(downloadUrl);
-          const nextUrl = URL.createObjectURL(blob);
+          const downloadData = await zipRes.json();
+          const nextUrl = downloadData?.url;
+          if (!nextUrl) {
+            throw new Error("URL download ZIP tidak tersedia.");
+          }
+          if (downloadUrl && downloadUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(downloadUrl);
+          }
           setDownloadUrl(nextUrl);
           const link = document.createElement("a");
           link.href = nextUrl;
-          link.download = "sertifikat.zip";
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
           document.body.appendChild(link);
           link.click();
           link.remove();
@@ -511,7 +515,7 @@ export default function HomePage() {
                           setFontSebagaiFile(null);
                           setFontSebagaiUrl("");
                           setFontSebagaiPath("");
-                          setFontSebagaiTempDir("");
+                          setFontSebagaiKey("");
                           setFontMetrics((prev) => ({ ...prev, sebagai: null }));
                         }
                       }}
@@ -855,9 +859,9 @@ export default function HomePage() {
                   <ul className="mt-2 space-y-1 text-xs text-slate-700">
                     <li>{templateFile ? "✓" : "•"} Template sertifikat</li>
                     <li>{excelFile ? "✓" : "•"} Data Excel peserta</li>
-                    <li>{fontNamaPath ? "✓" : "•"} Font nama</li>
+                    <li>{fontNamaKey ? "✓" : "•"} Font nama</li>
                     {enableSebagai && (
-                      <li>{fontSebagaiPath ? "✓" : "•"} Font sebagai</li>
+                      <li>{fontSebagaiKey ? "✓" : "•"} Font sebagai</li>
                     )}
                   </ul>
                 </div>

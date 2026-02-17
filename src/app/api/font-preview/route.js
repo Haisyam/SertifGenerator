@@ -5,6 +5,7 @@ import { createReadStream } from "node:fs";
 import os from "node:os";
 import unzipper from "unzipper";
 import fontkit from "@pdf-lib/fontkit";
+import { createR2Key, uploadBufferToR2 } from "../../../lib/r2";
 
 export const runtime = "nodejs";
 
@@ -96,6 +97,13 @@ export async function POST(request) {
     const fontBuffer = await fs.readFile(fontPath);
     const font = fontkit.create(fontBuffer);
     const ascentRatio = getAscentRatio(font);
+    const uploadedName = path.basename(fontPath);
+    const fontKey = createR2Key("uploads/font", uploadedName);
+    await uploadBufferToR2({
+      key: fontKey,
+      body: fontBuffer,
+      contentType: "font/otf",
+    });
 
     const encoded = Buffer.from(fontPath).toString("base64");
     const fontUrl = `/api/font-file?p=${encodeURIComponent(encoded)}`;
@@ -103,7 +111,7 @@ export async function POST(request) {
     return NextResponse.json({
       fontUrl,
       fontPath,
-      tempDir,
+      fontKey,
       ascentRatio,
     });
   } catch (error) {

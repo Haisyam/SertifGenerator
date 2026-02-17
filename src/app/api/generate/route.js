@@ -4,9 +4,10 @@ import fs from "node:fs/promises";
 import { createWriteStream } from "node:fs";
 import os from "node:os";
 import archiver from "archiver";
-import { parseExcel } from "../../../lib/excel";
+import { parseExcelBuffer } from "../../../lib/excel";
 import { generatePdfBuffer } from "../../../lib/pdf";
 import { createJob, updateJob } from "../../../lib/jobStore";
+import { createR2Key, getBufferFromR2, uploadBufferToR2 } from "../../../lib/r2";
 
 export const runtime = "nodejs";
 
@@ -25,9 +26,6 @@ const sanitizeFilename = (value) =>
     .replace(/\s+/g, " ")
     .slice(0, 120) || "sertifikat";
 
-const resolvePath = (inputPath) =>
-  path.isAbsolute(inputPath) ? inputPath : path.join(process.cwd(), inputPath);
-
 const safeRemove = async (target) => {
   if (!target) return;
   const resolved = path.resolve(target);
@@ -38,27 +36,16 @@ const safeRemove = async (target) => {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const {
-      templatePath,
-      excelPath,
-      fontNamaPath,
-      fontSebagaiPath,
-      fontNamaTempDir,
-      fontSebagaiTempDir,
-      positions,
-    } = body || {};
+    const { templateKey, excelKey, fontNamaKey, fontSebagaiKey, positions } = body || {};
 
     if (
-      !templatePath ||
-      !excelPath ||
-      !fontNamaPath ||
+      !templateKey ||
+      !excelKey ||
+      !fontNamaKey ||
       !positions?.nama ||
       typeof positions.enableSebagai !== "boolean"
     ) {
-      return NextResponse.json(
-        { error: "Payload tidak lengkap." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Payload tidak lengkap." }, { status: 400 });
     }
 
     if (positions.enableSebagai && !positions.sebagai) {
@@ -68,74 +55,75 @@ export async function POST(request) {
       );
     }
 
-    const absoluteTemplate = resolvePath(templatePath);
-    const absoluteExcel = resolvePath(excelPath);
-    const absoluteFontNama = resolvePath(fontNamaPath);
-    const absoluteFontSebagai = fontSebagaiPath
-      ? resolvePath(fontSebagaiPath)
-      : null;
-
-    if (positions.enableSebagai && !absoluteFontSebagai) {
+    if (positions.enableSebagai && !fontSebagaiKey) {
       return NextResponse.json(
         { error: "Font Sebagai wajib diupload saat fitur Sebagai aktif." },
         { status: 400 }
       );
     }
 
-    const rows = await parseExcel(absoluteExcel, {
+    const [templateBuffer, excelBuffer, fontNamaBuffer, fontSebagaiBuffer] = await Promise.all([
+      getBufferFromR2(templateKey),
+      getBufferFromR2(excelKey),
+      getBufferFromR2(fontNamaKey),
+      positions.enableSebagai && fontSebagaiKey
+        ? getBufferFromR2(fontSebagaiKey)
+        : Promise.resolve(null),
+    ]);
+
+    const rows = await parseExcelBuffer(excelBuffer, {
       requireSebagai: positions.enableSebagai,
     });
     if (!rows.length) {
-      return NextResponse.json(
-        { error: "Data Excel kosong." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Data Excel kosong." }, { status: 400 });
     }
 
     await fs.mkdir(tempBase, { recursive: true });
     const outputDir = await fs.mkdtemp(path.join(tempBase, "output-"));
     const zipPath = path.join(outputDir, "sertifikat.zip");
+    const templatePath = path.join(
+      outputDir,
+      `template${path.extname(templateKey || ".png") || ".png"}`
+    );
+    const fontNamaPath = path.join(
+      outputDir,
+      `font-nama${path.extname(fontNamaKey || ".otf") || ".otf"}`
+    );
+    const fontSebagaiPath = positions.enableSebagai
+      ? path.join(
+          outputDir,
+          `font-sebagai${path.extname(fontSebagaiKey || ".otf") || ".otf"}`
+        )
+      : null;
+
+    await fs.writeFile(templatePath, templateBuffer);
+    await fs.writeFile(fontNamaPath, fontNamaBuffer);
+    if (fontSebagaiPath && fontSebagaiBuffer) {
+      await fs.writeFile(fontSebagaiPath, fontSebagaiBuffer);
+    }
 
     const jobId = createJob({
       total: rows.length,
       current: 0,
-      zipPath: null,
+      zipKey: null,
       outputDir,
-      tempTargets: [
-        absoluteTemplate,
-        absoluteExcel,
-        absoluteFontNama,
-        absoluteFontSebagai,
-        fontNamaTempDir ? resolvePath(fontNamaTempDir) : null,
-        fontSebagaiTempDir ? resolvePath(fontSebagaiTempDir) : null,
-      ].filter(Boolean),
     });
 
     void (async () => {
-      const cleanupTargets = [
-        absoluteTemplate,
-        absoluteExcel,
-        absoluteFontNama,
-        absoluteFontSebagai,
-        fontNamaTempDir ? resolvePath(fontNamaTempDir) : null,
-        fontSebagaiTempDir ? resolvePath(fontSebagaiTempDir) : null,
-      ].filter(Boolean);
       try {
         const files = [];
         const usedNames = new Set();
         for (let i = 0; i < rows.length; i += 1) {
           const row = rows[i];
           const pdfBytes = await generatePdfBuffer({
-            templatePath: absoluteTemplate,
-            fontNamaPath: absoluteFontNama,
+            templatePath,
+            fontNamaPath,
             nama: row.nama,
             sebagai: row.sebagai,
             posisiNama: positions.nama,
             posisiSebagai: positions.sebagai,
             enableSebagai: positions.enableSebagai,
-            fontSebagaiPath: positions.enableSebagai
-              ? absoluteFontSebagai
-              : undefined,
+            fontSebagaiPath: positions.enableSebagai ? fontSebagaiPath : undefined,
           });
           const baseName = sanitizeFilename(row.nama || `peserta_${i + 1}`);
           let filename = `${baseName}.pdf`;
@@ -163,14 +151,22 @@ export async function POST(request) {
           output.on("error", reject);
         });
 
-        updateJob(jobId, { status: "done", zipPath });
+        const zipBuffer = await fs.readFile(zipPath);
+        const zipKey = createR2Key("outputs", `sertifikat-${jobId}.zip`);
+        await uploadBufferToR2({
+          key: zipKey,
+          body: zipBuffer,
+          contentType: "application/zip",
+        });
+
+        updateJob(jobId, { status: "done", zipKey });
       } catch (error) {
         updateJob(jobId, {
           status: "error",
           error: error?.message || "Generate gagal.",
         });
       } finally {
-        await Promise.all(cleanupTargets.map(safeRemove));
+        await safeRemove(outputDir);
       }
     })();
 
