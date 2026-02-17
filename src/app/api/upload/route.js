@@ -4,6 +4,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { Readable } from "node:stream";
 import os from "node:os";
+import { createR2Key, uploadBufferToR2 } from "../../../lib/r2";
 
 export const runtime = "nodejs";
 
@@ -59,23 +60,29 @@ export async function POST(request) {
     const req = await parseMultipart(request);
     const files = req.files || {};
 
-  const required = ["template", "excel"];
-  for (const key of required) {
-    if (!files[key]?.[0]) {
-      return NextResponse.json(
-        { error: `File ${key} wajib diupload.` },
-        { status: 400 }
-      );
+    const required = ["template", "excel"];
+    for (const key of required) {
+      if (!files[key]?.[0]) {
+        return NextResponse.json(
+          { error: `File ${key} wajib diupload.` },
+          { status: 400 }
+        );
+      }
     }
-  }
 
-  const responseFiles = {};
-  required.forEach((key) => {
-    responseFiles[key] = files[key][0].path.replace(/\\/g, "/");
-  });
-  if (files.font_sebagai?.[0]) {
-    responseFiles.font_sebagai = files.font_sebagai[0].path.replace(/\\/g, "/");
-  }
+    const responseFiles = {};
+    for (const key of required) {
+      const file = files[key][0];
+      const buffer = await fs.readFile(file.path);
+      const objectKey = createR2Key(`uploads/${key}`, file.originalname || file.filename);
+      await uploadBufferToR2({
+        key: objectKey,
+        body: buffer,
+        contentType: file.mimetype,
+      });
+      responseFiles[key] = objectKey;
+      await fs.rm(file.path, { force: true }).catch(() => {});
+    }
 
     return NextResponse.json({ files: responseFiles });
   } catch (error) {
