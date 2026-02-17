@@ -123,7 +123,7 @@ export default function PreviewEditor({
     <div className="w-full">
       <div
         ref={containerRef}
-        className="relative flex h-[360px] w-full items-center justify-center overflow-y-auto overflow-x-hidden rounded-xl border border-slate-800 bg-slate-950/40 md:h-[520px]"
+        className="relative flex h-[360px] w-full items-center justify-center overflow-y-auto overflow-x-hidden rounded-xl border border-blue-100 bg-blue-50 md:h-[520px]"
       >
         <div style={{ width: scaledWidth, height: scaledHeight }}>
           <div
