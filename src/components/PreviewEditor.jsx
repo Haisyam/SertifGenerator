@@ -22,6 +22,8 @@ export default function PreviewEditor({
   setRolePos,
   nameAscentRatio,
   roleAscentRatio,
+  nameStroke,
+  roleStroke,
   alignCenterNama,
   alignCenterSebagai,
   showSebagai = true,
@@ -73,6 +75,10 @@ export default function PreviewEditor({
   const roleX = alignCenterSebagai
     ? 0
     : Math.max(0, Math.min(rolePos.x, imageSize.width - roleWidth));
+  const nameStrokeWidth = Math.max(0, Number(nameStroke?.width || 0));
+  const roleStrokeWidth = Math.max(0, Number(roleStroke?.width || 0));
+  const nameStrokeColor = nameStroke?.color || "#ffffff";
+  const roleStrokeColor = roleStroke?.color || "#ffffff";
 
   const nameFontFamily = useMemo(
     () => (fontNamaUrl ? "FontNamaUpload" : "sans-serif"),
@@ -168,10 +174,10 @@ export default function PreviewEditor({
               const nextAscent =
                 (nameAscentRatio ?? fallbackAscentRatio) * nextSize;
               setNamePos({
+                ...namePos,
                 x: alignCenterNama ? namePos.x : position.x,
                 y: position.y + nextAscent,
                 fontSize: nextSize,
-                color: namePos.color,
               });
             }}
             className="absolute z-10"
@@ -186,6 +192,10 @@ export default function PreviewEditor({
                 pointerEvents: "none",
                 textAlign: alignCenterNama ? "center" : "left",
                 whiteSpace: "nowrap",
+                WebkitTextStroke:
+                  nameStrokeWidth > 0
+                    ? `${nameStrokeWidth}px ${nameStrokeColor}`
+                    : "0px transparent",
               }}
             >
               {sampleName}
@@ -219,10 +229,10 @@ export default function PreviewEditor({
                 const nextAscent =
                   (roleAscentRatio ?? fallbackAscentRatio) * nextSize;
                 setRolePos({
+                  ...rolePos,
                   x: alignCenterSebagai ? rolePos.x : position.x,
                   y: position.y + nextAscent,
                   fontSize: nextSize,
-                  color: rolePos.color,
                 });
               }}
               className="absolute z-10"
@@ -237,6 +247,10 @@ export default function PreviewEditor({
                   pointerEvents: "none",
                   textAlign: alignCenterSebagai ? "center" : "left",
                   whiteSpace: "nowrap",
+                  WebkitTextStroke:
+                    roleStrokeWidth > 0
+                      ? `${roleStrokeWidth}px ${roleStrokeColor}`
+                      : "0px transparent",
                 }}
               >
                 {sampleRole}
