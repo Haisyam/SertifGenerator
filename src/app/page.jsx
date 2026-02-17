@@ -28,12 +28,16 @@ export default function HomePage() {
     y: 240,
     fontSize: 100,
     color: "#111827",
+    strokeWidth: 0,
+    strokeColor: "#ffffff",
   });
   const [rolePos, setRolePos] = useState({
     x: 80,
     y: 340,
     fontSize: 40,
     color: "#111827",
+    strokeWidth: 0,
+    strokeColor: "#ffffff",
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [enableSebagai, setEnableSebagai] = useState(false);
@@ -563,80 +567,149 @@ export default function HomePage() {
                   </p>
                 </div>
 
-                <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                  <div className="flex items-center justify-between text-sm text-slate-700">
-                    <span>Ukuran Huruf Nama</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNamePos((prev) => ({
+                <div className="space-y-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                  <div className="space-y-4">
+                    <h3 className="border-b border-blue-200 pb-2 text-sm font-semibold text-slate-900">
+                      Pengaturan Nama
+                    </h3>
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>Ukuran Huruf Nama</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNamePos((prev) => ({
+                              ...prev,
+                              fontSize: Math.max(10, prev.fontSize - 2),
+                            }))
+                          }
+                          className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="10"
+                          max="200"
+                          value={namePos.fontSize}
+                          onChange={(event) =>
+                            setNamePos((prev) => ({
+                              ...prev,
+                              fontSize:
+                                Number(event.target.value) || prev.fontSize,
+                            }))
+                          }
+                          className="w-20 rounded-md border border-blue-200 bg-white px-2 py-1 text-right text-sm text-slate-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNamePos((prev) => ({
+                              ...prev,
+                              fontSize: Math.min(200, prev.fontSize + 2),
+                            }))
+                          }
+                          className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <label className="flex items-center justify-between text-sm text-slate-700">
+                      <span>Rata Tengah Otomatis (Nama)</span>
+                      <input
+                        type="checkbox"
+                        checked={alignCenter.nama}
+                        onChange={(event) =>
+                          setAlignCenter((prev) => ({
                             ...prev,
-                            fontSize: Math.max(10, prev.fontSize - 2),
+                            nama: event.target.checked,
                           }))
                         }
-                        className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
-                      >
-                        -
-                      </button>
+                        className="h-4 w-4 rounded border-blue-300 bg-white text-blue-600"
+                      />
+                    </label>
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>Warna Huruf Nama</span>
                       <input
-                        type="number"
-                        min="10"
-                        max="200"
-                        value={namePos.fontSize}
+                        type="color"
+                        value={namePos.color}
                         onChange={(event) =>
                           setNamePos((prev) => ({
                             ...prev,
-                            fontSize:
-                              Number(event.target.value) || prev.fontSize,
+                            color: event.target.value,
                           }))
                         }
-                        className="w-20 rounded-md border border-blue-200 bg-white px-2 py-1 text-right text-sm text-slate-900"
+                        className="h-9 w-24 cursor-pointer rounded-md border border-blue-200 bg-white"
                       />
-                      <button
-                        type="button"
-                        onClick={() =>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>Warna Outline Nama</span>
+                      <input
+                        type="color"
+                        value={namePos.strokeColor}
+                        onChange={(event) =>
                           setNamePos((prev) => ({
                             ...prev,
-                            fontSize: Math.min(200, prev.fontSize + 2),
+                            strokeColor: event.target.value,
                           }))
                         }
-                        className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
-                      >
-                        +
-                      </button>
+                        className="h-9 w-24 cursor-pointer rounded-md border border-blue-200 bg-white"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-slate-700">
+                      <span>Ketebalan Outline Nama</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNamePos((prev) => ({
+                              ...prev,
+                              strokeWidth: Math.max(0, prev.strokeWidth - 0.5),
+                            }))
+                          }
+                          className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          max="8"
+                          step="0.5"
+                          value={namePos.strokeWidth}
+                          onChange={(event) =>
+                            setNamePos((prev) => ({
+                              ...prev,
+                              strokeWidth: Math.max(
+                                0,
+                                Math.min(8, Number(event.target.value) || 0)
+                              ),
+                            }))
+                          }
+                          className="w-20 rounded-md border border-blue-200 bg-white px-2 py-1 text-right text-sm text-slate-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNamePos((prev) => ({
+                              ...prev,
+                              strokeWidth: Math.min(8, prev.strokeWidth + 0.5),
+                            }))
+                          }
+                          className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <label className="flex items-center justify-between text-sm text-slate-700">
-                    <span>Rata Tengah Otomatis (Nama)</span>
-                    <input
-                      type="checkbox"
-                      checked={alignCenter.nama}
-                      onChange={(event) =>
-                        setAlignCenter((prev) => ({
-                          ...prev,
-                          nama: event.target.checked,
-                        }))
-                      }
-                      className="h-4 w-4 rounded border-blue-300 bg-white text-blue-600"
-                    />
-                  </label>
-                  <div className="flex items-center justify-between text-sm text-slate-700">
-                    <span>Warna Huruf Nama</span>
-                    <input
-                      type="color"
-                      value={namePos.color}
-                      onChange={(event) =>
-                        setNamePos((prev) => ({
-                          ...prev,
-                          color: event.target.value,
-                        }))
-                      }
-                      className="h-9 w-24 cursor-pointer rounded-md border border-blue-200 bg-white"
-                    />
-                  </div>
+
                   {enableSebagai && (
-                    <>
+                    <div className="space-y-4 pt-2">
+                      <h3 className="border-b border-blue-200 pb-2 text-sm font-semibold text-slate-900">
+                        Pengaturan Sebagai
+                      </h3>
                       <div className="flex items-center justify-between text-sm text-slate-700">
                         <span>Ukuran Huruf Sebagai</span>
                         <div className="flex items-center gap-2">
@@ -708,7 +781,67 @@ export default function HomePage() {
                           className="h-9 w-24 cursor-pointer rounded-md border border-blue-200 bg-white"
                         />
                       </div>
-                    </>
+                      <div className="flex items-center justify-between text-sm text-slate-700">
+                        <span>Warna Outline Sebagai</span>
+                        <input
+                          type="color"
+                          value={rolePos.strokeColor}
+                          onChange={(event) =>
+                            setRolePos((prev) => ({
+                              ...prev,
+                              strokeColor: event.target.value,
+                            }))
+                          }
+                          className="h-9 w-24 cursor-pointer rounded-md border border-blue-200 bg-white"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-slate-700">
+                        <span>Ketebalan Outline Sebagai</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRolePos((prev) => ({
+                                ...prev,
+                                strokeWidth: Math.max(0, prev.strokeWidth - 0.5),
+                              }))
+                            }
+                            className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            max="8"
+                            step="0.5"
+                            value={rolePos.strokeWidth}
+                            onChange={(event) =>
+                              setRolePos((prev) => ({
+                                ...prev,
+                                strokeWidth: Math.max(
+                                  0,
+                                  Math.min(8, Number(event.target.value) || 0)
+                                ),
+                              }))
+                            }
+                            className="w-20 rounded-md border border-blue-200 bg-white px-2 py-1 text-right text-sm text-slate-900"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRolePos((prev) => ({
+                                ...prev,
+                                strokeWidth: Math.min(8, prev.strokeWidth + 0.5),
+                              }))
+                            }
+                            className="h-8 w-8 rounded-md border border-blue-200 bg-white text-sm text-slate-900 hover:border-blue-400"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -746,6 +879,14 @@ export default function HomePage() {
                   setRolePos={setRolePos}
                   nameAscentRatio={fontMetrics.nama}
                   roleAscentRatio={fontMetrics.sebagai}
+                  nameStroke={{
+                    width: namePos.strokeWidth,
+                    color: namePos.strokeColor,
+                  }}
+                  roleStroke={{
+                    width: rolePos.strokeWidth,
+                    color: rolePos.strokeColor,
+                  }}
                   alignCenterNama={alignCenter.nama}
                   alignCenterSebagai={alignCenter.sebagai}
                   showSebagai={enableSebagai}

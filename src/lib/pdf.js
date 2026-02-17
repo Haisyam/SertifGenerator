@@ -63,21 +63,27 @@ export async function generatePdfBuffer({
         2
       : posisiSebagai?.x ?? 0;
 
-  page.drawText(nama, {
+  drawTextWithStroke(page, {
+    text: nama,
     x: namaX,
     y: namaY,
     size: posisiNama.fontSize,
     font: fontNama,
     color: hexToRgb(posisiNama.color),
+    strokeWidth: posisiNama.strokeWidth,
+    strokeColor: hexToRgb(posisiNama.strokeColor || "#ffffff"),
   });
 
   if (shouldRenderSebagai) {
-    page.drawText(sebagai, {
+    drawTextWithStroke(page, {
+      text: sebagai,
       x: sebagaiX,
       y: sebagaiY,
       size: posisiSebagai.fontSize,
       font: fontSebagai,
       color: hexToRgb(posisiSebagai.color),
+      strokeWidth: posisiSebagai.strokeWidth,
+      strokeColor: hexToRgb(posisiSebagai.strokeColor || "#ffffff"),
     });
   }
 
@@ -92,4 +98,39 @@ const hexToRgb = (value) => {
   const g = (num >> 8) & 255;
   const b = num & 255;
   return rgb(r / 255, g / 255, b / 255);
+};
+
+const drawTextWithStroke = (
+  page,
+  { text, x, y, size, font, color, strokeWidth = 0, strokeColor }
+) => {
+  const outline = Math.max(0, Number(strokeWidth || 0));
+  if (outline > 0) {
+    const layers = [
+      outline,
+      outline >= 2 ? outline * 0.6 : null,
+      outline >= 4 ? outline * 0.3 : null,
+    ].filter(Boolean);
+    layers.forEach((radius) => {
+      const steps = Math.max(8, Math.ceil(radius * 8));
+      for (let i = 0; i < steps; i += 1) {
+        const angle = (2 * Math.PI * i) / steps;
+        page.drawText(text, {
+          x: x + Math.cos(angle) * radius,
+          y: y + Math.sin(angle) * radius,
+          size,
+          font,
+          color: strokeColor || rgb(1, 1, 1),
+        });
+      }
+    });
+  }
+
+  page.drawText(text, {
+    x,
+    y,
+    size,
+    font,
+    color,
+  });
 };
