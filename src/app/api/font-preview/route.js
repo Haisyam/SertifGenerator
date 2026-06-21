@@ -5,11 +5,14 @@ import { createReadStream } from "node:fs";
 import os from "node:os";
 import unzipper from "unzipper";
 import fontkit from "@pdf-lib/fontkit";
-import { createR2Key, uploadBufferToR2 } from "../../../lib/r2";
+import { createStorageKey, uploadBufferToStorage } from "../../../lib/storage";
 
 export const runtime = "nodejs";
 
 const getTempBase = () => {
+  if (process.env.NODE_ENV === "development") {
+    return path.join(process.cwd(), "public", "tmp");
+  }
   if (process.env.VERCEL) return "/tmp";
   return os.tmpdir();
 };
@@ -98,8 +101,8 @@ export async function POST(request) {
     const font = fontkit.create(fontBuffer);
     const ascentRatio = getAscentRatio(font);
     const uploadedName = path.basename(fontPath);
-    const fontKey = createR2Key("uploads/font", uploadedName);
-    await uploadBufferToR2({
+    const fontKey = createStorageKey("uploads/font", uploadedName);
+    await uploadBufferToStorage({
       key: fontKey,
       body: fontBuffer,
       contentType: "font/otf",

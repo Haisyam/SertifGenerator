@@ -7,11 +7,14 @@ import archiver from "archiver";
 import { parseExcelBuffer } from "../../../lib/excel";
 import { generatePdfBuffer } from "../../../lib/pdf";
 import { createJob, updateJob } from "../../../lib/jobStore";
-import { createR2Key, getBufferFromR2, uploadBufferToR2 } from "../../../lib/r2";
+import { createStorageKey, getBufferFromStorage, uploadBufferToStorage, deleteFileFromStorage } from "../../../lib/storage";
 
 export const runtime = "nodejs";
 
 const getTempBase = () => {
+  if (process.env.NODE_ENV === "development") {
+    return path.join(process.cwd(), "public", "tmp");
+  }
   if (process.env.VERCEL) return "/tmp";
   return os.tmpdir();
 };
@@ -63,11 +66,11 @@ export async function POST(request) {
     }
 
     const [templateBuffer, excelBuffer, fontNamaBuffer, fontSebagaiBuffer] = await Promise.all([
-      getBufferFromR2(templateKey),
-      getBufferFromR2(excelKey),
-      getBufferFromR2(fontNamaKey),
+      getBufferFromStorage(templateKey),
+      getBufferFromStorage(excelKey),
+      getBufferFromStorage(fontNamaKey),
       positions.enableSebagai && fontSebagaiKey
-        ? getBufferFromR2(fontSebagaiKey)
+        ? getBufferFromStorage(fontSebagaiKey)
         : Promise.resolve(null),
     ]);
 
@@ -152,14 +155,25 @@ export async function POST(request) {
         });
 
         const zipBuffer = await fs.readFile(zipPath);
-        const zipKey = createR2Key("outputs", `sertifikat-${jobId}.zip`);
-        await uploadBufferToR2({
+        const zipKey = createStorageKey("outputs", `sertifikat-${jobId}.zip`);
+        await uploadBufferToStorage({
           key: zipKey,
           body: zipBuffer,
           contentType: "application/zip",
         });
 
         updateJob(jobId, { status: "done", zipKey });
+
+        // Hapus otomatis file setelah 5 menit (300.000 ms)
+        setTimeout(async () => {
+          await deleteFileFromStorage(zipKey);
+          await deleteFileFromStorage(templateKey);
+          await deleteFileFromStorage(excelKey);
+          await deleteFileFromStorage(fontNamaKey);
+          if (fontSebagaiKey) {
+            await deleteFileFromStorage(fontSebagaiKey);
+          }
+        }, 5 * 60 * 1000);
       } catch (error) {
         updateJob(jobId, {
           status: "error",

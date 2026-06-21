@@ -6,6 +6,9 @@ import os from "node:os";
 export const runtime = "nodejs";
 
 const getTempBase = () => {
+  if (process.env.NODE_ENV === "development") {
+    return path.join(process.cwd(), "public", "tmp");
+  }
   if (process.env.VERCEL) return "/tmp";
   return os.tmpdir();
 };

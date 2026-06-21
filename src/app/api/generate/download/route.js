@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getJob, removeJob } from "../../../../lib/jobStore";
-import { getSignedDownloadUrl } from "../../../../lib/r2";
+import { getDownloadUrl } from "../../../../lib/storage";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ export async function GET(request) {
   }
 
   try {
-    const url = await getSignedDownloadUrl(job.zipKey, 900);
+    const url = getDownloadUrl(job.zipKey);
     return NextResponse.json({ url });
   } finally {
     removeJob(jobId);

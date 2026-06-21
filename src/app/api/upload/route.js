@@ -4,11 +4,14 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { Readable } from "node:stream";
 import os from "node:os";
-import { createR2Key, uploadBufferToR2 } from "../../../lib/r2";
+import { createStorageKey, uploadBufferToStorage } from "../../../lib/storage";
 
 export const runtime = "nodejs";
 
 const getTempBase = () => {
+  if (process.env.NODE_ENV === "development") {
+    return path.join(process.cwd(), "public", "tmp");
+  }
   if (process.env.VERCEL) return "/tmp";
   return os.tmpdir();
 };
@@ -74,8 +77,8 @@ export async function POST(request) {
     for (const key of required) {
       const file = files[key][0];
       const buffer = await fs.readFile(file.path);
-      const objectKey = createR2Key(`uploads/${key}`, file.originalname || file.filename);
-      await uploadBufferToR2({
+      const objectKey = createStorageKey(`uploads/${key}`, file.originalname || file.filename);
+      await uploadBufferToStorage({
         key: objectKey,
         body: buffer,
         contentType: file.mimetype,
